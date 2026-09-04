@@ -1,6 +1,7 @@
 package com.example.ApiGerenciamentoUsuario.Controllers;
 
 import com.example.ApiGerenciamentoUsuario.DTO.UsuarioCreateDTO;
+import com.example.ApiGerenciamentoUsuario.DTO.UsuarioLoginDTO;
 import com.example.ApiGerenciamentoUsuario.DTO.UsuarioLoginResponseDTO;
 import com.example.ApiGerenciamentoUsuario.Security.JwtService;
 import com.example.ApiGerenciamentoUsuario.Services.UsuarioService;
@@ -32,7 +33,7 @@ public class AuthController {
     }
 
     @PostMapping("/login")
-    public ResponseEntity<?> login(@RequestBody UsuarioCreateDTO request){
+    public ResponseEntity<?> login(@RequestBody UsuarioLoginDTO request){
         Authentication authentication = authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(
                         request.Email(),
