@@ -1,0 +1,27 @@
+services:
+  postgres:
+    image: postgres:17
+    container_name: meu-postgres
+    environment:
+      POSTGRES_DB: minhabd
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: 123456
+    volumes:
+      - postgres-dados:/var/lib/postgresql/data
+    networks:
+      - minha-rede
+
+  api:
+    build: .
+    container_name: minha-api
+    ports:
+      - "8080:8080"
+    depends_on:
+      - postgres
+    networks:
+      - minha-rede
+volumes:
+  postgres-dados:
+
+networks:
+  minha-rede:

@@ -9,6 +9,7 @@ import com.example.ApiGerenciamentoUsuario.Models.Usuario;
 import com.example.ApiGerenciamentoUsuario.Repositories.UsuarioRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -18,7 +19,7 @@ import java.util.List;
 public class UsuarioService {
 
     @Autowired
-    UsuarioRepository userRepo;
+    UsuarioRepository usuarioRepository;
 
     @Autowired
     PasswordEncoder passwordEncoder;
@@ -28,7 +29,7 @@ public class UsuarioService {
     }
 
     public UsuarioFullResponseDTO save(UsuarioCreateDTO signupDTO){
-        if (userRepo.existsByEmail(signupDTO.Email())){
+        if (usuarioRepository.existsByEmail(signupDTO.Email())){
             throw new UsuarioJaCadastrado("Usuario ja cadastrado");
         } else{
             Usuario user = new Usuario();
@@ -38,50 +39,83 @@ public class UsuarioService {
             user.setSenha(passwordEncoder.encode(signupDTO.Senha()));
             user.setRole(Role.USER);
 
-            return new UsuarioFullResponseDTO(userRepo.save(user));
+            return new UsuarioFullResponseDTO(usuarioRepository.save(user));
         }
     }
+    
+    public UsuarioFullResponseDTO findByEmail(String email){
+        Usuario user = usuarioRepository.findByEmail(email)
+                .orElseThrow(
+                        () -> criarErroUsuario("Usuario de Email: "+ email + " não encontrado.")
+                );
+        return new UsuarioFullResponseDTO(user);
 
-    public List<UsuarioFullResponseDTO> findAll() { return userRepo
+    }
+
+    public List<UsuarioFullResponseDTO> findAll() { return usuarioRepository
             .findAll()
             .stream()
             .map(user -> new UsuarioFullResponseDTO(
                     user
             ))
-            .toList(); }
-
-    public UsuarioFullResponseDTO findById(Long Id){
-        Usuario user = userRepo.findById(Id)
-                .orElseThrow(
-                        () -> criarErroUsuario("Usuario de Id: "+ Id + " não encontrado.")
-                );
-
-        return new UsuarioFullResponseDTO(
-                user
-        );
-
+            .toList();
     }
 
-    public ResponseEntity<?> deleteById(Long id){
-        if (userRepo.existsById(id)){
-            userRepo.deleteById(id);
-            return ResponseEntity.noContent().build();
-        } else{
-            throw criarErroUsuario("Usuario de Id: "+ id+ " não encontrado.");
+    private Usuario verificarProprietario(Long id, String email){
+        Usuario usuario = usuarioRepository.findByEmail(email)
+                .orElseThrow(() ->
+                        new UsuarioNaoEncontrado("Usuario não encontrado"));
+
+        if (!usuario.getId().equals(id)){
+            throw new AccessDeniedException("Acesso Negado");
         }
+
+        return usuario;
     }
 
-    public UsuarioFullResponseDTO putUpdate(Long id, UsuarioCreateDTO user){
+    public UsuarioFullResponseDTO findById(Long Id,String email){
+        Usuario usuario = verificarProprietario(Id,email);
 
-        Usuario userCriado = new Usuario();
+        return new UsuarioFullResponseDTO(usuario);
+    }
+    public UsuarioFullResponseDTO findById(Long Id){
+        Usuario usuario = usuarioRepository.findById(Id)
+                .orElseThrow(() -> new UsuarioNaoEncontrado("Usuario não encontrado"));
+
+        return new UsuarioFullResponseDTO(usuario);
+    }
+
+    public ResponseEntity<?> deleteById(Long id, String email){
+        Usuario usuario = verificarProprietario(id,email);
+
+        usuarioRepository.deleteById(id);
+        return ResponseEntity.noContent().build();
+    }
+    public ResponseEntity<?> deleteById(Long id){
+        usuarioRepository.deleteById(id);
+        return ResponseEntity.noContent().build();
+    }
+
+    public UsuarioFullResponseDTO putUpdate(Long id,String email, UsuarioCreateDTO user){
+
+        Usuario userCriado = verificarProprietario(id,email);
 
         userCriado.setNome(user.Nome());
         userCriado.setDataNasc(user.DataNasc());
         userCriado.setEmail(user.Email());
         userCriado.setSenha(passwordEncoder.encode(user.Senha()));
 
-        return new UsuarioFullResponseDTO(userRepo.save(userCriado));
+        return new UsuarioFullResponseDTO(usuarioRepository.save(userCriado));
     }
 
+    public UsuarioFullResponseDTO alterarRole(Long id, Role novaRole){
+        Usuario usuario = usuarioRepository.findById(id)
+                .orElseThrow(() ->
+                        new UsuarioNaoEncontrado("Usuario não encontrado"));
+
+        usuario.setRole(novaRole);
+
+        return new UsuarioFullResponseDTO(usuarioRepository.save(usuario));
+    }
 
 }
